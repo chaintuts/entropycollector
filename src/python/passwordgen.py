@@ -51,7 +51,7 @@ def generate_passwords(seed, length=20, num_passwords=1):
 
     passwords = []
     for i in range(0, num_passwords):
-        raw_bytes = hashlib.sha256(seed + i.to_bytes(1, 'big')).digest()
+        raw_bytes = hashlib.sha512(seed + i.to_bytes(1, 'big')).digest()
         encoded = base64.b64encode(raw_bytes, altchars=b'!#')
         full = encoded.decode().replace("=","")
         password = full[:length]
