@@ -9,33 +9,20 @@ import string
 import base64
 
 # Define constants
-ENTROPY_FILE = "ENTROPY.TXT"
+ENTROPY_FILE = "ENTROPY.DAT"
+SEED_LENGTH = 64 # SHA-512 seed data is 64 bytes
 MAX_LENGTH = 86 # 512 bits encoded as base64 gives 86 ASCII characters
 MIN_LENGTH = 8 # Far below a sane limit, but this is a demo. Some legacy systems hate their users.
 MAX_PASSWORDS = 256 # Can request up to 256 passwords at a time
 MIN_PASSWORDS = 1
 
-# Read the entropy from the file and feed a hash
-def hash_from_entropy():
+# Read the seed from the file and return
+def seed_from_file():
 
-    hasher = hashlib.sha512()
-
-    with open(ENTROPY_FILE) as f:
-        while True:
-            
-            # The file is written in hexadecimal text format, so read each byte as 2 hex characters
-            chars = f.read(2)
-            if not chars:
-                break
-            if not len(chars) == 2:
-                break
-            entropy_byte = bytes.fromhex(chars)
-
-            # Update the hash state
-            hasher.update(entropy_byte)
-
-    # Get the final "seed"
-    return hasher.digest()
+    with open(ENTROPY_FILE, "rb") as f:
+        # The seed file is written as binary data, SHA-512 hashed seed data (64 bytes)
+        seed_data = f.read(SEED_LENGTH)
+    return seed_data
 
 # Generate the desired password(s)
 def generate_passwords(seed, length=20, num_passwords=1):
@@ -64,10 +51,10 @@ def generate_passwords(seed, length=20, num_passwords=1):
 def main():
 
     # Get the seed from the entropy file
-    seed = hash_from_entropy()
+    seed = seed_from_file()
 
     # Print the seed in hex format
-    print(f"Seed generated from entropy via SHA-512 (hex): {seed.hex()}")
+    print(f"Seed generated from entropy via SHA-512 mixing (hex): {seed.hex()}")
 
     # Get the password(s)
     passwords = generate_passwords(seed, length=20, num_passwords=10)

@@ -7,17 +7,22 @@
 #include <SD.h>
 #include <Adafruit_LIS3DH.h>
 #include <Adafruit_Sensor.h>
+#include <Crypto.h>
+#include <SHA512.h>
+#include <string.h>
 
 #define LIS3DH_CLK 13
 #define LIS3DH_MISO 12
 #define LIS3DH_MOSI 11
 #define LIS3DH_CS 10
 #define CARD 4
+#define HASH_SIZE 64
 
 // Module-level variables
 Adafruit_LIS3DH lis = Adafruit_LIS3DH();
 File entropy_log;
-const String ENTROPY_LOG_NAME = "entropy.txt";
+const String ENTROPY_LOG_NAME = "entropy.dat";
+uint8_t buffer[HASH_SIZE];
 
 // Initialize components
 void setup()
@@ -43,17 +48,6 @@ void setup()
     error(2);
   }
 
-  if (SD.exists(ENTROPY_LOG_NAME))
-  {
-    SD.remove(ENTROPY_LOG_NAME);
-  }
-
-  entropy_log = SD.open(ENTROPY_LOG_NAME, FILE_WRITE);
-  if (! entropy_log)
-  {
-    error(4);
-  }
-
   // Turn off the red LED since there is no known error
   digitalWrite(13, HIGH);
 }
@@ -66,10 +60,13 @@ void loop()
 
   // Read the accelerometer data
   uint16_t acl_data = get_acl_data();
+  uint8_t* acl_data_ptr = (uint8_t*) &acl_data;
+
+  // Update the seed hasher with the data
+  update_hasher(acl_data_ptr);
 
   // Log the data to SD card
-  entropy_log.print(acl_data, HEX);
-  entropy_log.flush();
+  write_seed_buffer(buffer);
 
   // Turn off the indicator
   delay(100);
@@ -77,6 +74,23 @@ void loop()
 
   // Wait for a bit
   delay(200);
+
+}
+
+// Use the hasher to update the seed data from sensor data
+void update_hasher(uint8_t* acl_data_ptr)
+{
+
+  // Update the seed by continuosly hashing new sensor data
+  // Use finalize() every loop to flush the seed to the SD card storage
+  // finalize() requires reset() after being called, so reset and then
+  // update() with 2 data points:
+  // * The finalized hash from the last loop
+  // * The new sensor data
+  SHA512 hasher;
+  hasher.update(buffer, HASH_SIZE);
+  hasher.update(acl_data_ptr, 2);
+  hasher.finalize(buffer, HASH_SIZE);
 
 }
 
@@ -95,6 +109,28 @@ uint16_t get_acl_data()
   // it's just a way to combine the bits of each axis into one reading
   return lis.x ^ lis.y ^ lis.z;
 
+}
+
+// Erase and re-write the data file
+void write_seed_buffer(uint8_t* seed_buffer)
+{
+
+  // Remove the old seed file
+  if (SD.exists(ENTROPY_LOG_NAME))
+  {
+    SD.remove(ENTROPY_LOG_NAME);
+  }
+
+  // Initialize the file
+  entropy_log = SD.open(ENTROPY_LOG_NAME, FILE_WRITE);
+  if (! entropy_log)
+  {
+    error(4);
+  }
+
+  // Write the latest seed
+  entropy_log.write(seed_buffer, HASH_SIZE);
+  entropy_log.flush();
 }
 
 // From learn.adafruit.com - a simple error code blink

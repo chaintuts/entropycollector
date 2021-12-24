@@ -5,13 +5,13 @@
 
 # This block defines makefile variables
 SRC_FILES=src/python/*.py src/arduino/*.ino
-RES_FILE=res/ENTROPY.TXT.sample
-RES_FILE_DST=bin/entropycollector/ENTROPY.TXT
+RES_FILE=res/ENTROPY.DAT.sample
+RES_FILE_DST=bin/entropycollector/ENTROPY.DAT
 
 BUILD_DIR=bin/entropycollector
 
 # This rule builds the application
-# This copies the password generator Python file and sample ENTROPY.TXT to the bin dir
+# This copies the password generator Python file and sample entropy file to the bin dir
 # You'll need an Arduino dev environment to fully build the entropy collector .ino file for your own hardware
 # See Adafruit tutorials for your board and accelerometer
 build: $(SRC_FILES)
